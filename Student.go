@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
@@ -140,41 +141,58 @@ func getStudentSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Call Ollama API with the student data for a summary
 	summary, err := generateOllamaSummary(student)
 	if err != nil {
-		http.Error(w, "Error generating summary ", http.StatusInternalServerError)
+		fmt.Printf("Error generating summary: %v\n", err)
+		http.Error(w, "Error generating summary", http.StatusInternalServerError)
 		return
 	}
+
+	fmt.Fprintf(w, "Generated Summary: %s", summary)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(summary))
 }
 
 func generateOllamaSummary(student Student) (string, error) {
-	requestBody, _ := json.Marshal(map[string]interface{}{
-		"prompt": "Generate a profile summary for a student",
-		"context": map[string]string{
-			"Name":  student.Name,
-			"Age":   strconv.Itoa(student.Age),
-			"Email": student.Email,
-		},
-	})
 
-	resp, err := http.Post("http://localhost:11434/ollama/api", "application/json", bytes.NewBuffer(requestBody))
+	ollamaURL := "http://localhost:11434/api/v1/generate"
+
+	generateProfileSummary(student)
+	payload := map[string]interface{}{
+		"input": fmt.Sprintf("Generate a summary for a student with the following details: ID=%d, Name=%s, Age=%d, Email=%s", student.ID, student.Name, student.Age, student.Email),
+	}
+
+	requestBody, err := json.Marshal(payload)
 	if err != nil {
-		return "Error", err
+		return "", fmt.Errorf("error marshalling request body: %v", err)
+	}
+
+	resp, err := http.Post(ollamaURL, "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		return "", fmt.Errorf("error calling Ollama API: %v", err)
 	}
 	defer resp.Body.Close()
 
-	var response map[string]string
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return "", err
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Ollama API returned status: %s", resp.Status)
 	}
 
-	return response["summary"], nil
-}
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("error decoding Ollama API response: %v", err)
+	}
 
+	summary, ok := result["summary"].(string)
+	if !ok {
+		return "", fmt.Errorf("unexpected response format from Ollama API")
+	}
+
+	return summary, nil
+}
+func generateProfileSummary(student Student) (string, error) {
+	return fmt.Sprintf("Student %s, age %d, email %s", student.Name, student.Age, student.Email), nil
+}
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/students", createStudent).Methods("POST")
