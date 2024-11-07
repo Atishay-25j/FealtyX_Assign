@@ -23,13 +23,13 @@ Clone the repository:
 
 bash
 Copy code
-git clone https://github.com/yourusername/students-api.git
-cd students-api
+git clone https://github.com/Atishay-25j/FealtyX_Assign.git
+cd students.go
 Initialize the Go module (if not already done):
 
 bash
 Copy code
-go mod init students_api
+go mod init FealtyX_Assign
 Install dependencies:
 
 For routing, we use gorilla/mux:
