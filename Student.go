@@ -174,9 +174,9 @@ func generateOllamaSummary(student Student) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Ollama API returned status: %s", resp.Status)
-	}
+	// if resp.StatusCode != http.StatusOK {
+	// 	return "", fmt.Errorf("Ollama API returned status: %s", resp.Status)
+	// }
 
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
